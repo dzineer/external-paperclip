@@ -294,7 +294,14 @@ export function Documents() {
 
   const tree = useMemo(() => {
     if (!treeQuery.data) return [];
-    return buildTree(treeQuery.data.folders, treeQuery.data.files);
+    // Company Documents page only shows Paperclip Root and its contents
+    const rootFolder = treeQuery.data.folders.find((f) => f.parentId === null && f.ownerRole === "all");
+    if (!rootFolder) return buildTree(treeQuery.data.folders, treeQuery.data.files);
+    const rootId = rootFolder.id;
+    const filteredFolders = treeQuery.data.folders.filter((f) => f.id === rootId || f.parentId === rootId);
+    const folderIds = new Set(filteredFolders.map((f) => f.id));
+    const filteredFiles = treeQuery.data.files.filter((f) => folderIds.has(f.folderId));
+    return buildTree(filteredFolders, filteredFiles);
   }, [treeQuery.data]);
 
   // Auto-expand root folders on first load

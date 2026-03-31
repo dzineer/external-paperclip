@@ -38,6 +38,7 @@ import { PageSkeleton } from "../components/PageSkeleton";
 import { RunButton, PauseResumeButton } from "../components/AgentActionButtons";
 import { BudgetPolicyCard } from "../components/BudgetPolicyCard";
 import { PackageFileTree, buildFileTree } from "../components/PackageFileTree";
+import { AgentDocumentsTab } from "../components/AgentDocumentsTab";
 import { ScrollToBottom } from "../components/ScrollToBottom";
 import { formatCents, formatDate, relativeTime, formatTokens, visibleRunCostUsd } from "../lib/utils";
 import { cn } from "../lib/utils";
@@ -222,13 +223,14 @@ function scrollToContainerBottom(container: ScrollContainer, behavior: ScrollBeh
   container.scrollTo({ top: container.scrollHeight, behavior });
 }
 
-type AgentDetailView = "dashboard" | "instructions" | "configuration" | "skills" | "runs" | "budget";
+type AgentDetailView = "dashboard" | "instructions" | "configuration" | "skills" | "runs" | "budget" | "documents";
 
 function parseAgentDetailView(value: string | null): AgentDetailView {
   if (value === "instructions" || value === "prompts") return "instructions";
   if (value === "configure" || value === "configuration") return "configuration";
   if (value === "skills") return "skills";
   if (value === "budget") return "budget";
+  if (value === "documents") return "documents";
   if (value === "runs") return value;
   return "dashboard";
 }
@@ -651,7 +653,9 @@ export function AgentDetail() {
               ? "runs"
               : activeView === "budget"
                 ? "budget"
-              : "dashboard";
+                : activeView === "documents"
+                  ? "documents"
+                  : "dashboard";
     if (routeAgentRef !== canonicalAgentRef || urlTab !== canonicalTab) {
       navigate(`/agents/${canonicalAgentRef}/${canonicalTab}`, { replace: true });
       return;
@@ -914,6 +918,7 @@ export function AgentDetail() {
               { value: "configuration", label: "Configuration" },
               { value: "runs", label: "Runs" },
               { value: "budget", label: "Budget" },
+              { value: "documents", label: "Documents" },
             ]}
             value={activeView}
             onValueChange={(value) => navigate(`/agents/${canonicalAgentRef}/${value}`)}
@@ -1048,6 +1053,13 @@ export function AgentDetail() {
           />
         </div>
       ) : null}
+
+      {activeView === "documents" && resolvedCompanyId && (
+        <AgentDocumentsTab
+          agentId={agent.id}
+          companyId={resolvedCompanyId}
+        />
+      )}
     </div>
   );
 }

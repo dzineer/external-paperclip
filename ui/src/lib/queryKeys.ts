@@ -129,6 +129,7 @@ export const queryKeys = {
   skills: {
     available: ["skills", "available"] as const,
   },
+  docTree: (companyId: string, agentId?: string) => ["doc-tree", companyId, agentId ?? "__all__"] as const,
   plugins: {
     all: ["plugins"] as const,
     examples: ["plugins", "examples"] as const,

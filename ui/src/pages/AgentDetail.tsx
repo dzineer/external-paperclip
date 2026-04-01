@@ -39,6 +39,9 @@ import { RunButton, PauseResumeButton } from "../components/AgentActionButtons";
 import { BudgetPolicyCard } from "../components/BudgetPolicyCard";
 import { PackageFileTree, buildFileTree } from "../components/PackageFileTree";
 import { AgentDocumentsTab } from "../components/AgentDocumentsTab";
+import { AgentBrainTab } from "../components/AgentBrainTab";
+import { AgentCalendarTab } from "../components/AgentCalendarTab";
+import { AndrewsDeskTab } from "../components/AndrewsDeskTab";
 import { ScrollToBottom } from "../components/ScrollToBottom";
 import { formatCents, formatDate, relativeTime, formatTokens, visibleRunCostUsd } from "../lib/utils";
 import { cn } from "../lib/utils";
@@ -223,7 +226,7 @@ function scrollToContainerBottom(container: ScrollContainer, behavior: ScrollBeh
   container.scrollTo({ top: container.scrollHeight, behavior });
 }
 
-type AgentDetailView = "dashboard" | "instructions" | "configuration" | "skills" | "runs" | "budget" | "documents";
+type AgentDetailView = "dashboard" | "instructions" | "configuration" | "skills" | "runs" | "budget" | "documents" | "brain" | "calendar" | "desk";
 
 function parseAgentDetailView(value: string | null): AgentDetailView {
   if (value === "instructions" || value === "prompts") return "instructions";
@@ -231,6 +234,9 @@ function parseAgentDetailView(value: string | null): AgentDetailView {
   if (value === "skills") return "skills";
   if (value === "budget") return "budget";
   if (value === "documents") return "documents";
+  if (value === "brain") return "brain";
+  if (value === "calendar") return "calendar";
+  if (value === "desk") return "desk";
   if (value === "runs") return value;
   return "dashboard";
 }
@@ -655,7 +661,13 @@ export function AgentDetail() {
                 ? "budget"
                 : activeView === "documents"
                   ? "documents"
-                  : "dashboard";
+                  : activeView === "brain"
+                    ? "brain"
+                    : activeView === "calendar" && (agent?.name?.toLowerCase() === "marie" || agent?.name?.toLowerCase() === "amy")
+                      ? "calendar"
+                      : activeView === "desk" && agent?.role === "ceo"
+                        ? "desk"
+                        : "dashboard";
     if (routeAgentRef !== canonicalAgentRef || urlTab !== canonicalTab) {
       navigate(`/agents/${canonicalAgentRef}/${canonicalTab}`, { replace: true });
       return;
@@ -919,6 +931,13 @@ export function AgentDetail() {
               { value: "runs", label: "Runs" },
               { value: "budget", label: "Budget" },
               { value: "documents", label: "Documents" },
+              { value: "brain", label: "Brain" },
+              ...(agent?.name?.toLowerCase() === "marie" || agent?.name?.toLowerCase() === "amy"
+                ? [{ value: "calendar", label: "Calendar" }]
+                : []),
+              ...(agent?.role === "ceo"
+                ? [{ value: "desk", label: "Andrew's Desk" }]
+                : []),
             ]}
             value={activeView}
             onValueChange={(value) => navigate(`/agents/${canonicalAgentRef}/${value}`)}
@@ -1057,6 +1076,28 @@ export function AgentDetail() {
       {activeView === "documents" && resolvedCompanyId && (
         <AgentDocumentsTab
           agentId={agent.id}
+          companyId={resolvedCompanyId}
+        />
+      )}
+
+      {activeView === "brain" && resolvedCompanyId && (
+        <AgentBrainTab
+          agentId={agent.id}
+          agentName={agent.name}
+          agentTitle={agent.title ?? undefined}
+          companyId={resolvedCompanyId}
+        />
+      )}
+
+      {activeView === "calendar" && resolvedCompanyId && (
+        <AgentCalendarTab
+          agentName={agent.name}
+          companyId={resolvedCompanyId}
+        />
+      )}
+
+      {activeView === "desk" && resolvedCompanyId && (
+        <AndrewsDeskTab
           companyId={resolvedCompanyId}
         />
       )}

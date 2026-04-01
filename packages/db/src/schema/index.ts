@@ -58,3 +58,4 @@ export { pluginWebhookDeliveries } from "./plugin_webhooks.js";
 export { pluginLogs } from "./plugin_logs.js";
 export { docFolders } from "./doc_folders.js";
 export { docFolderFiles } from "./doc_folder_files.js";
+export { agentBrainFolders } from "./agent_brain_folders.js";

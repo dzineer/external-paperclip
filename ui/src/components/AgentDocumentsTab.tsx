@@ -14,8 +14,9 @@ import {
   Trash2,
   Download,
   Search,
+  CloudDownload,
 } from "lucide-react";
-import { docTreeApi, type DocFolder, type DocFolderFile } from "../api/doc-tree";
+import { docTreeApi, type DocFolder, type DocFolderFile, type GoogleDriveFile } from "../api/doc-tree";
 import { queryKeys } from "../lib/queryKeys";
 import { EmptyState } from "./EmptyState";
 import { Button } from "@/components/ui/button";
@@ -150,6 +151,11 @@ function FolderNode({
                 >
                   {name}
                 </a>
+                {file.sourceType === "google_drive" && (
+                  <span title="Imported from Google Drive">
+                    <CloudDownload className="h-3 w-3 text-blue-400 shrink-0" />
+                  </span>
+                )}
                 <span className="text-[11px] text-muted-foreground shrink-0">
                   {formatBytes(file.byteSize)}
                 </span>
@@ -202,6 +208,11 @@ export function AgentDocumentsTab({
   const [search, setSearch] = useState("");
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [showDriveImport, setShowDriveImport] = useState(false);
+  const [driveFileId, setDriveFileId] = useState("");
+  const [driveFileName, setDriveFileName] = useState("");
+  const [driveSearch, setDriveSearch] = useState("");
+  const [driveCollapsed, setDriveCollapsed] = useState(false);
 
   const treeQuery = useQuery({
     queryKey: queryKeys.docTree(companyId, agentId),
@@ -229,6 +240,24 @@ export function AgentDocumentsTab({
       setShowNewFolder(false);
       setNewFolderName("");
     },
+  });
+
+  const importDriveMutation = useMutation({
+    mutationFn: ({ folderId, driveFileId, fileName }: { folderId: string; driveFileId: string; fileName?: string }) =>
+      docTreeApi.importDrive(companyId, folderId, driveFileId, fileName),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.docTree(companyId, agentId) });
+      setShowDriveImport(false);
+      setDriveFileId("");
+      setDriveFileName("");
+    },
+  });
+
+  const driveQuery = useQuery({
+    queryKey: ["google-drive", companyId, driveSearch],
+    queryFn: () => docTreeApi.listGoogleDrive(companyId, driveSearch || undefined),
+    enabled: !!companyId,
+    retry: false,
   });
 
   const deleteFileMutation = useMutation({
@@ -302,6 +331,15 @@ export function AgentDocumentsTab({
           Folder
         </Button>
         <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowDriveImport(true)}
+          disabled={!selectedFolderId}
+        >
+          <CloudDownload className="h-3.5 w-3.5 mr-1" />
+          Import from Drive
+        </Button>
+        <Button
           size="sm"
           onClick={() => fileInputRef.current?.click()}
           disabled={!selectedFolderId}
@@ -319,12 +357,15 @@ export function AgentDocumentsTab({
 
       {!selectedFolderId && tree.length > 0 && (
         <p className="text-xs text-muted-foreground">
-          Select a folder to upload documents for this agent.
+          Select a folder to upload documents, create subfolders, or import from Google Drive.
         </p>
       )}
 
       {uploadMutation.isPending && (
         <p className="text-xs text-muted-foreground">Uploading...</p>
+      )}
+      {importDriveMutation.isPending && (
+        <p className="text-xs text-muted-foreground">Importing from Google Drive...</p>
       )}
 
       {treeQuery.error && (
@@ -332,6 +373,95 @@ export function AgentDocumentsTab({
           {treeQuery.error instanceof Error ? treeQuery.error.message : "Failed to load documents"}
         </p>
       )}
+
+      {/* Google Drive */}
+      <div className="border border-border rounded-lg bg-card">
+        <div
+          className="px-3 py-2 border-b border-border flex items-center gap-2 cursor-pointer"
+          onClick={() => setDriveCollapsed(!driveCollapsed)}
+        >
+          {driveCollapsed ? (
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          )}
+          <CloudDownload className="h-4 w-4 text-blue-500" />
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex-1">
+            Google Drive
+          </span>
+          {!driveCollapsed && (
+            <div className="relative max-w-48">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+              <Input
+                placeholder="Search Drive..."
+                value={driveSearch}
+                onChange={(e) => { e.stopPropagation(); setDriveSearch(e.target.value); }}
+                onClick={(e) => e.stopPropagation()}
+                className="pl-7 h-7 text-xs"
+              />
+            </div>
+          )}
+        </div>
+        {!driveCollapsed && (
+          <div className="py-1 max-h-64 overflow-y-auto">
+            {driveQuery.isLoading && (
+              <div className="px-4 py-3 text-xs text-muted-foreground">Loading Google Drive files...</div>
+            )}
+            {driveQuery.error && (
+              <div className="px-4 py-3 text-xs text-muted-foreground">
+                {(driveQuery.error as Error).message?.includes("401") || (driveQuery.error as Error).message?.includes("auth")
+                  ? "Google Drive not connected. Authentication required."
+                  : `Unable to load Google Drive: ${(driveQuery.error as Error).message}`}
+              </div>
+            )}
+            {driveQuery.data && driveQuery.data.files.length === 0 && (
+              <div className="px-4 py-3 text-xs text-muted-foreground">No files found in Google Drive.</div>
+            )}
+            {driveQuery.data && driveQuery.data.files.map((file: GoogleDriveFile) => {
+              const isFolder = file.mimeType === "application/vnd.google-apps.folder";
+              const Icon = isFolder ? Folder : file.mimeType.startsWith("image/") ? FileImage : FileText;
+              return (
+                <div
+                  key={file.id}
+                  className="flex items-center gap-2 py-1.5 px-4 hover:bg-accent/50 rounded-sm group"
+                >
+                  <Icon className={`h-4 w-4 shrink-0 ${isFolder ? "text-amber-500" : "text-blue-400"}`} />
+                  <a
+                    href={file.webViewLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm truncate flex-1 hover:underline"
+                  >
+                    {file.name}
+                  </a>
+                  {file.size && (
+                    <span className="text-[11px] text-muted-foreground shrink-0">
+                      {formatBytes(file.size)}
+                    </span>
+                  )}
+                  {file.owner && (
+                    <span className="text-[11px] text-muted-foreground shrink-0 max-w-20 truncate">
+                      {file.owner}
+                    </span>
+                  )}
+                  {!isFolder && selectedFolderId && (
+                    <button
+                      onClick={() => {
+                        setDriveFileId(file.id);
+                        setDriveFileName(file.name);
+                        setShowDriveImport(true);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-blue-500 hover:text-blue-700 shrink-0"
+                    >
+                      Import
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Tree */}
       {tree.length > 0 && (
@@ -361,6 +491,46 @@ export function AgentDocumentsTab({
       {tree.length === 0 && totalFiles === 0 && !treeQuery.isLoading && (
         <EmptyState icon={FolderTree} message="No documents for this agent yet. Upload a file to get started." />
       )}
+
+      {/* Drive Import Dialog */}
+      <Dialog open={showDriveImport} onOpenChange={setShowDriveImport}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Import from Google Drive</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              placeholder="Google Drive file ID"
+              value={driveFileId}
+              onChange={(e) => setDriveFileId(e.target.value)}
+            />
+            <Input
+              placeholder="Display name (optional)"
+              value={driveFileName}
+              onChange={(e) => setDriveFileName(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDriveImport(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedFolderId && driveFileId) {
+                  importDriveMutation.mutate({
+                    folderId: selectedFolderId,
+                    driveFileId,
+                    fileName: driveFileName || undefined,
+                  });
+                }
+              }}
+              disabled={!driveFileId || !selectedFolderId || importDriveMutation.isPending}
+            >
+              Import
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* New Folder Dialog */}
       <Dialog open={showNewFolder} onOpenChange={setShowNewFolder}>

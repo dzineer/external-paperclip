@@ -137,8 +137,8 @@ export function docTreeService(db: Db) {
           if (nameLower.includes("executive assistant")) {
             accessibleRoles.push("executive_assistant");
           }
-          // CEO and Executive Assistant get full access to all folders
-          if (agent.role === "ceo" || nameLower.includes("executive assistant")) {
+          // CEO, Executive Assistant, Marie, and Amy get full access to all folders
+          if (agent.role === "ceo" || nameLower.includes("executive assistant") || nameLower.includes("marie") || nameLower.includes("amy")) {
             accessibleRoles = ["all", "ceo", "research_specialist", "executive_assistant", "shared"];
           }
         }

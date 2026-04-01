@@ -56,3 +56,6 @@ export { pluginEntities } from "./plugin_entities.js";
 export { pluginJobs, pluginJobRuns } from "./plugin_jobs.js";
 export { pluginWebhookDeliveries } from "./plugin_webhooks.js";
 export { pluginLogs } from "./plugin_logs.js";
+export { docFolders } from "./doc_folders.js";
+export { docFolderFiles } from "./doc_folder_files.js";
+export { agentBrainFolders } from "./agent_brain_folders.js";

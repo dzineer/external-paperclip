@@ -11,7 +11,7 @@ services:
       timeout: 5s
       retries: 30
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 
@@ -67,8 +67,8 @@ services:
       timeout: 10s
       retries: 30
     ports:
-      - "7474:7474"
-      - "7687:7687"
+      - "127.0.0.1:7474:7474"
+      - "127.0.0.1:7687:7687"
     volumes:
       - neo4j-data:/data
 
@@ -81,7 +81,7 @@ services:
       OPENAI_API_KEY: "${OPENAI_API_KEY:?OPENAI_API_KEY must be set}"
       PORT: "8000"
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     depends_on:
       neo4j:
         condition: service_healthy

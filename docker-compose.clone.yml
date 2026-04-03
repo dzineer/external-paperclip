@@ -1,0 +1,59 @@
+## Paperclip Clone — second server instance on port 3200
+## Shares the same database (postgres, neo4j, graphiti) as the primary stack.
+##
+## Usage:
+##   OPENAI_API_KEY=... BETTER_AUTH_SECRET=... docker-compose -f docker-compose.clone.yml -p paperclip-dev up -d --build
+##
+## The clone connects to the primary stack's db/neo4j/graphiti via the
+## external network "external-paperclip_default".
+
+services:
+  server-dev:
+    build: .
+    ports:
+      - "3200:3200"
+    environment:
+      DATABASE_URL: postgres://paperclip:paperclip@db:5432/paperclip
+      PORT: "3200"
+      SERVE_UI: "true"
+      PAPERCLIP_DEPLOYMENT_MODE: "authenticated"
+      PAPERCLIP_DEPLOYMENT_EXPOSURE: "private"
+      PAPERCLIP_PUBLIC_URL: "${PAPERCLIP_PUBLIC_URL:-http://localhost:3200}"
+      BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET must be set}"
+      GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE: "/paperclip/.config/gws/tokens.json"
+      GRAPHITI_URL: "http://graphiti:8000"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+    volumes:
+      - paperclip-data:/paperclip
+      - /home/dev/paperclip-claude-config:/paperclip/.claude
+      - /home/dev/claude-queue/claude-slow:/usr/local/bin/claude-slow:ro
+      - /home/dev/claude-queue/worker.py:/opt/claude-queue/worker.py:ro
+      - /home/dev/gws-config:/paperclip/.config/gws
+      - /home/dev/graphiti-mcp:/opt/graphiti-mcp:ro
+      - /home/dev/doctree-mcp:/opt/doctree-mcp:ro
+      - /home/dev/agent-memory-mcp:/opt/agent-memory-mcp:ro
+      - /tmp/external-paperclip/skills/agent-memory:/app/skills/agent-memory:ro
+      - /home/dev/gws-mcp:/opt/gws-mcp:ro
+      - /tmp/external-paperclip/skills/graphiti-memory:/app/skills/graphiti-memory:ro
+      - /tmp/external-paperclip/skills/google-workspace:/app/skills/google-workspace:ro
+      - /tmp/external-paperclip/skills/gws-gmail-draft:/app/skills/gws-gmail-draft:ro
+      - /tmp/external-paperclip/skills/gws-gmail-full:/app/skills/gws-gmail-full:ro
+      - /tmp/external-paperclip/skills/gws-calendar:/app/skills/gws-calendar:ro
+      - /tmp/external-paperclip/skills/gws-drive:/app/skills/gws-drive:ro
+      - /tmp/external-paperclip/skills/gws-docs:/app/skills/gws-docs:ro
+      - /tmp/external-paperclip/skills/gws-sheets:/app/skills/gws-sheets:ro
+      - /tmp/external-paperclip/skills/gws-tasks:/app/skills/gws-tasks:ro
+      - /tmp/external-paperclip/skills/document-tree:/app/skills/document-tree:ro
+      - /tmp/external-paperclip/skills/paperclip-fullstack-guide:/app/skills/paperclip-fullstack-guide:ro
+    networks:
+      - primary
+
+networks:
+  primary:
+    external: true
+    name: external-paperclip_default
+
+volumes:
+  paperclip-data:
+    external: true
+    name: external-paperclip_paperclip-data

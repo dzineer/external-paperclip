@@ -1,0 +1,92 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: paperclip
+      POSTGRES_PASSWORD: paperclip
+      POSTGRES_DB: paperclip
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paperclip -d paperclip"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  server:
+    build: .
+    ports:
+      - "3100:3100"
+    environment:
+      DATABASE_URL: postgres://paperclip:paperclip@db:5432/paperclip
+      PORT: "3100"
+      SERVE_UI: "true"
+      PAPERCLIP_DEPLOYMENT_MODE: "authenticated"
+      PAPERCLIP_DEPLOYMENT_EXPOSURE: "private"
+      PAPERCLIP_PUBLIC_URL: "${PAPERCLIP_PUBLIC_URL:-http://localhost:3100}"
+      BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET must be set}"
+      GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE: "/paperclip/.config/gws/tokens.json"
+      GRAPHITI_URL: "http://graphiti:8000"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+    volumes:
+      - paperclip-data:/paperclip
+      - /home/dev/paperclip-claude-config:/paperclip/.claude
+      - /home/dev/claude-queue/claude-slow:/usr/local/bin/claude-slow:ro
+      - /home/dev/claude-queue/worker.py:/opt/claude-queue/worker.py:ro
+      - /home/dev/gws-config:/paperclip/.config/gws
+      - /home/dev/graphiti-mcp:/opt/graphiti-mcp:ro
+      - /home/dev/doctree-mcp:/opt/doctree-mcp:ro
+      - /home/dev/agent-memory-mcp:/opt/agent-memory-mcp:ro
+      - /tmp/external-paperclip/skills/agent-memory:/app/skills/agent-memory:ro
+      - /home/dev/gws-mcp:/opt/gws-mcp:ro
+      - /tmp/external-paperclip/skills/graphiti-memory:/app/skills/graphiti-memory:ro
+      - /tmp/external-paperclip/skills/google-workspace:/app/skills/google-workspace:ro
+      - /tmp/external-paperclip/skills/gws-gmail-draft:/app/skills/gws-gmail-draft:ro
+      - /tmp/external-paperclip/skills/gws-gmail-full:/app/skills/gws-gmail-full:ro
+      - /tmp/external-paperclip/skills/gws-calendar:/app/skills/gws-calendar:ro
+      - /tmp/external-paperclip/skills/gws-drive:/app/skills/gws-drive:ro
+      - /tmp/external-paperclip/skills/gws-docs:/app/skills/gws-docs:ro
+      - /tmp/external-paperclip/skills/gws-sheets:/app/skills/gws-sheets:ro
+      - /tmp/external-paperclip/skills/gws-tasks:/app/skills/gws-tasks:ro
+      - /tmp/external-paperclip/skills/document-tree:/app/skills/document-tree:ro
+      - /tmp/external-paperclip/skills/paperclip-fullstack-guide:/app/skills/paperclip-fullstack-guide:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+  neo4j:
+    image: neo4j:5.26-community
+    environment:
+      NEO4J_AUTH: neo4j/graphiti-password
+      NEO4J_PLUGINS: '["apoc"]'
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p graphiti-password 'RETURN 1'"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+    ports:
+      - "127.0.0.1:7474:7474"
+      - "127.0.0.1:7687:7687"
+    volumes:
+      - neo4j-data:/data
+
+  graphiti:
+    image: zepai/graphiti:latest
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: graphiti-password
+      OPENAI_API_KEY: "${OPENAI_API_KEY:?OPENAI_API_KEY must be set}"
+      PORT: "8000"
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      neo4j:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  paperclip-data:
+  neo4j-data:

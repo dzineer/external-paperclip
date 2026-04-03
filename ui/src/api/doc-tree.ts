@@ -73,6 +73,26 @@ export interface BrainFolder {
   trainedAt: string;
 }
 
+export interface GmailMessage {
+  id: string;
+  threadId: string;
+  snippet: string;
+  from: string | null;
+  to: string | null;
+  subject: string | null;
+  date: string | null;
+  labelIds: string[];
+  isUnread: boolean;
+}
+
+export interface GmailMessageFull extends GmailMessage {
+  body: string;
+}
+
+export interface GmailListResult {
+  messages: GmailMessage[];
+}
+
 export interface BrainStatus {
   trainedFolders: BrainFolder[];
   totalFolders: number;
@@ -161,4 +181,15 @@ export const docTreeApi = {
     const qs = params.length > 0 ? `?${params.join("&")}` : "";
     return api.get<CalendarEventsResult>(`/companies/${companyId}/doc-tree/google-calendar${qs}`);
   },
+
+  listGmail: (companyId: string, q?: string, maxResults?: number) => {
+    const params: string[] = [];
+    if (q) params.push(`q=${encodeURIComponent(q)}`);
+    if (maxResults) params.push(`maxResults=${maxResults}`);
+    const qs = params.length > 0 ? `?${params.join("&")}` : "";
+    return api.get<GmailListResult>(`/companies/${companyId}/doc-tree/gmail${qs}`);
+  },
+
+  getGmailMessage: (companyId: string, messageId: string) =>
+    api.get<GmailMessageFull>(`/companies/${companyId}/doc-tree/gmail/${messageId}`),
 };

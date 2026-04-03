@@ -17,6 +17,7 @@ import { useQuery } from "@tanstack/react-query";
 import { SidebarSection } from "./SidebarSection";
 import { SidebarNavItem } from "./SidebarNavItem";
 import { SidebarProjects } from "./SidebarProjects";
+import { SidebarDesk } from "./SidebarDesk";
 import { SidebarAgents } from "./SidebarAgents";
 import { useDialog } from "../context/DialogContext";
 import { useCompany } from "../context/CompanyContext";
@@ -106,9 +107,11 @@ export function Sidebar() {
 
         <SidebarProjects />
 
-        <SidebarAgents />
-
-        <SidebarSection label="Company">
+        <SidebarDesk />
+        
+	<SidebarAgents />
+        
+	<SidebarSection label="Company">
           <SidebarNavItem to="/documents" label="Documents" icon={FolderTree} />
           <SidebarNavItem to="/org" label="Org" icon={Network} />
           <SidebarNavItem to="/skills" label="Skills" icon={Boxes} />

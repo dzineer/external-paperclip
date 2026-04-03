@@ -484,6 +484,124 @@ export function docTreeRoutes(db: Db, storage: StorageService) {
     }
   });
 
+  // List Gmail messages
+  router.get("/companies/:companyId/doc-tree/gmail", async (req, res) => {
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+
+    const maxResults = Number(req.query.maxResults) || 20;
+    const query = typeof req.query.q === "string" ? req.query.q : undefined;
+
+    const { execFile } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+    const execFileAsync = promisify(execFile);
+
+    try {
+      const params: Record<string, unknown> = {
+        userId: "me",
+        maxResults,
+      };
+      if (query) params.q = query;
+
+      const { stdout } = await execFileAsync(
+        "npx",
+        ["@googleworkspace/cli", "gmail", "users", "messages", "list", "--params", JSON.stringify(params)],
+        { timeout: 30_000, env: { ...process.env } },
+      );
+
+      const data = JSON.parse(stdout);
+      const messageIds: string[] = (data.messages || []).map((m: any) => m.id);
+
+      // Fetch each message's metadata
+      const messages = [];
+      for (const id of messageIds.slice(0, maxResults)) {
+        try {
+          const { stdout: msgStdout } = await execFileAsync(
+            "npx",
+            ["@googleworkspace/cli", "gmail", "users", "messages", "get", "--params", JSON.stringify({ userId: "me", id, format: "metadata", metadataHeaders: ["From", "To", "Subject", "Date"] })],
+            { timeout: 15_000, env: { ...process.env } },
+          );
+          const msg = JSON.parse(msgStdout);
+          const headers = msg.payload?.headers ?? [];
+          const getHeader = (name: string) => headers.find((h: any) => h.name.toLowerCase() === name.toLowerCase())?.value ?? null;
+
+          messages.push({
+            id: msg.id,
+            threadId: msg.threadId,
+            snippet: msg.snippet ?? "",
+            from: getHeader("From"),
+            to: getHeader("To"),
+            subject: getHeader("Subject"),
+            date: getHeader("Date"),
+            labelIds: msg.labelIds ?? [],
+            isUnread: (msg.labelIds ?? []).includes("UNREAD"),
+          });
+        } catch {
+          // Skip individual message errors
+        }
+      }
+
+      res.json({ messages });
+    } catch (err) {
+      const message = (err as Error).message || "Unknown error";
+      if (message.includes("auth") || message.includes("login") || message.includes("credential")) {
+        res.status(401).json({ error: "Gmail authentication required." });
+      } else {
+        res.status(502).json({ error: `Gmail error: ${message}` });
+      }
+    }
+  });
+
+  // Get a single Gmail message with full body
+  router.get("/companies/:companyId/doc-tree/gmail/:messageId", async (req, res) => {
+    const companyId = req.params.companyId as string;
+    const messageId = req.params.messageId as string;
+    assertCompanyAccess(req, companyId);
+
+    const { execFile } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+    const execFileAsync = promisify(execFile);
+
+    try {
+      const { stdout } = await execFileAsync(
+        "npx",
+        ["@googleworkspace/cli", "gmail", "users", "messages", "get", "--params", JSON.stringify({ userId: "me", id: messageId, format: "full" })],
+        { timeout: 15_000, env: { ...process.env } },
+      );
+
+      const msg = JSON.parse(stdout);
+      const headers = msg.payload?.headers ?? [];
+      const getHeader = (name: string) => headers.find((h: any) => h.name.toLowerCase() === name.toLowerCase())?.value ?? null;
+
+      // Extract body text
+      let body = "";
+      const parts = msg.payload?.parts ?? [];
+      if (parts.length > 0) {
+        const textPart = parts.find((p: any) => p.mimeType === "text/plain");
+        if (textPart?.body?.data) {
+          body = Buffer.from(textPart.body.data, "base64url").toString("utf-8");
+        }
+      } else if (msg.payload?.body?.data) {
+        body = Buffer.from(msg.payload.body.data, "base64url").toString("utf-8");
+      }
+
+      res.json({
+        id: msg.id,
+        threadId: msg.threadId,
+        snippet: msg.snippet ?? "",
+        from: getHeader("From"),
+        to: getHeader("To"),
+        subject: getHeader("Subject"),
+        date: getHeader("Date"),
+        body,
+        labelIds: msg.labelIds ?? [],
+        isUnread: (msg.labelIds ?? []).includes("UNREAD"),
+      });
+    } catch (err) {
+      res.status(502).json({ error: `Gmail error: ${(err as Error).message}` });
+    }
+  });
+
   // Train agent brain on a Google Drive folder
   router.post("/companies/:companyId/agents/:agentId/train-brain", async (req, res) => {
     const companyId = req.params.companyId as string;

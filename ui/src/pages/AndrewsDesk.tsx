@@ -8,16 +8,22 @@ import {
   FolderTree,
   Mail,
   Brain,
+  CalendarPlus,
+  ClipboardList,
+  Circle,
+  ExternalLink,
 } from "lucide-react";
 import { useCompany } from "../context/CompanyContext";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { agentsApi } from "../api/agents";
+import { docTreeApi, type GmailMessage } from "../api/doc-tree";
 import { queryKeys } from "../lib/queryKeys";
 import { cn } from "../lib/utils";
 import { AndrewsDeskTab } from "../components/AndrewsDeskTab";
 import { AgentCalendarTab } from "../components/AgentCalendarTab";
 import { AgentDocumentsTab } from "../components/AgentDocumentsTab";
 import { AgentBrainTab } from "../components/AgentBrainTab";
+import { PerfWeekCalendar } from "../components/PerfWeekCalendar";
 import type { Agent } from "@paperclipai/shared";
 
 const DESK_SECTIONS = [
@@ -29,6 +35,184 @@ const DESK_SECTIONS = [
 ] as const;
 
 type DeskSection = (typeof DESK_SECTIONS)[number]["key"];
+
+// Keywords that indicate a scheduling-related email
+const SCHEDULE_KEYWORDS = [
+  "meeting", "schedule", "calendar", "appointment", "call",
+  "sync", "standup", "stand-up", "1:1", "one-on-one",
+  "invite", "rsvp", "agenda", "reschedule", "cancel meeting",
+  "zoom", "google meet", "teams", "webex", "conference",
+  "book", "slot", "availability", "free time", "catch up",
+];
+
+function isSchedulingEmail(msg: GmailMessage): boolean {
+  const text = `${msg.subject ?? ""} ${msg.snippet}`.toLowerCase();
+  return SCHEDULE_KEYWORDS.some((kw) => text.includes(kw));
+}
+
+function formatEmailDate(dateStr: string | null) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diff = now.getTime() - d.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function extractName(from: string | null) {
+  if (!from) return "Unknown";
+  const match = from.match(/^"?([^"<]+)"?\s*</);
+  return match ? match[1].trim() : from.split("@")[0];
+}
+
+function DeskEmailPanel({ companyId }: { companyId: string }) {
+  const gmailQuery = useQuery({
+    queryKey: ["desk-gmail", companyId],
+    queryFn: () => docTreeApi.listGmail(companyId, undefined, 20),
+    enabled: !!companyId,
+    retry: false,
+    refetchInterval: 120_000,
+  });
+
+  const { scheduling, tasks } = useMemo(() => {
+    const messages = gmailQuery.data?.messages ?? [];
+    const scheduling: GmailMessage[] = [];
+    const tasks: GmailMessage[] = [];
+
+    for (const msg of messages) {
+      if (isSchedulingEmail(msg)) {
+        scheduling.push(msg);
+      } else {
+        tasks.push(msg);
+      }
+    }
+    return { scheduling, tasks };
+  }, [gmailQuery.data]);
+
+  if (gmailQuery.error) {
+    return (
+      <div className="bg-card rounded-sm border border-border p-5 text-center">
+        <Mail className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+        <p className="text-xs text-muted-foreground">Gmail not connected</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      {/* To Schedule */}
+      <div className="bg-card rounded-sm border border-border overflow-hidden">
+        <div className="px-5 py-3 border-b border-border flex items-center gap-2">
+          <CalendarPlus className="h-4 w-4 text-orange-500" />
+          <h3 className="text-xs font-black text-foreground uppercase tracking-[0.15em] flex-1">
+            To Schedule
+          </h3>
+          <span className="text-[10px] font-bold text-orange-500">
+            {scheduling.length}
+          </span>
+        </div>
+        <div className="divide-y divide-border max-h-[400px] overflow-y-auto">
+          {gmailQuery.isLoading && (
+            <div className="px-5 py-6 text-xs text-muted-foreground">Loading emails...</div>
+          )}
+          {!gmailQuery.isLoading && scheduling.length === 0 && (
+            <div className="px-5 py-6 text-xs text-muted-foreground text-center">
+              No scheduling emails found
+            </div>
+          )}
+          {scheduling.map((msg) => (
+            <div
+              key={msg.id}
+              className="flex items-start gap-3 px-5 py-3 hover:bg-accent/30 transition-colors group"
+            >
+              <div className="mt-1 shrink-0">
+                {msg.isUnread ? (
+                  <Circle className="h-2 w-2 fill-orange-500 text-orange-500" />
+                ) : (
+                  <Circle className="h-2 w-2 text-muted-foreground/20" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-foreground truncate">
+                    {extractName(msg.from)}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground shrink-0">
+                    {formatEmailDate(msg.date)}
+                  </span>
+                </div>
+                <p className={`text-xs truncate ${msg.isUnread ? "font-semibold text-foreground" : "text-foreground/80"}`}>
+                  {msg.subject ?? "(no subject)"}
+                </p>
+                <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+                  {msg.snippet}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Tasks / Action Items */}
+      <div className="bg-card rounded-sm border border-border overflow-hidden">
+        <div className="px-5 py-3 border-b border-border flex items-center gap-2">
+          <ClipboardList className="h-4 w-4 text-primary" />
+          <h3 className="text-xs font-black text-foreground uppercase tracking-[0.15em] flex-1">
+            Tasks
+          </h3>
+          <span className="text-[10px] font-bold text-primary">
+            {tasks.length}
+          </span>
+        </div>
+        <div className="divide-y divide-border max-h-[400px] overflow-y-auto">
+          {gmailQuery.isLoading && (
+            <div className="px-5 py-6 text-xs text-muted-foreground">Loading emails...</div>
+          )}
+          {!gmailQuery.isLoading && tasks.length === 0 && (
+            <div className="px-5 py-6 text-xs text-muted-foreground text-center">
+              No task emails found
+            </div>
+          )}
+          {tasks.map((msg) => (
+            <div
+              key={msg.id}
+              className="flex items-start gap-3 px-5 py-3 hover:bg-accent/30 transition-colors group"
+            >
+              <div className="mt-1 shrink-0">
+                {msg.isUnread ? (
+                  <Circle className="h-2 w-2 fill-primary text-primary" />
+                ) : (
+                  <Circle className="h-2 w-2 text-muted-foreground/20" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-foreground truncate">
+                    {extractName(msg.from)}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground shrink-0">
+                    {formatEmailDate(msg.date)}
+                  </span>
+                </div>
+                <p className={`text-xs truncate ${msg.isUnread ? "font-semibold text-foreground" : "text-foreground/80"}`}>
+                  {msg.subject ?? "(no subject)"}
+                </p>
+                <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+                  {msg.snippet}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function AndrewsDesk() {
   const { section } = useParams<{ section?: string }>();
@@ -110,6 +294,12 @@ export function AndrewsDesk() {
                 companyId={selectedCompanyId}
               />
             </div>
+            <div className="mt-8">
+              <PerfWeekCalendar />
+            </div>
+            <div className="mt-8">
+              <DeskEmailPanel companyId={selectedCompanyId} />
+            </div>
           </>
         )}
 
@@ -131,13 +321,7 @@ export function AndrewsDesk() {
         )}
 
         {activeSection === "email" && (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <Mail className="h-12 w-12 text-muted-foreground/30 mb-4" />
-            <h3 className="text-lg font-bold text-foreground mb-1">Email Integration</h3>
-            <p className="text-sm text-muted-foreground max-w-sm">
-              Gmail integration coming soon. View and manage emails directly from your desk.
-            </p>
-          </div>
+          <DeskEmailPanel companyId={selectedCompanyId} />
         )}
 
         {activeSection === "brain" && ceoAgent && (

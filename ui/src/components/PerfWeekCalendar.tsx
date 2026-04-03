@@ -1,0 +1,388 @@
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const THEMES = ["Plan", "Team", "Build", "Build", "Celebrate", "Adventure", "Restore"];
+
+// Color classes matching the original design
+const C = {
+  morning:    "bg-[#aed6f1]",
+  planning:   "bg-[#d7bde2]",
+  invest:     "bg-[#aed6f1]",
+  leadership: "bg-[#d7bde2]",
+  work:       "bg-[#abebc6]",
+  walkdrive:  "bg-[#aed6f1]",
+  meeting:    "bg-[#d7bde2]",
+  finance:    "bg-[#abebc6]",
+  review:     "bg-[#abebc6]",
+  finish:     "bg-[#d5f5e3]",
+  evening:    "bg-[#aed6f1]",
+  personal:   "bg-[#fadbd8]",
+  night:      "bg-[#aed6f1]",
+  meditate:   "bg-[#abebc6]",
+  selfcare:   "bg-[#d7bde2]",
+  brunch:     "bg-[#d7bde2]",
+  family:     "bg-[#fadbd8]",
+  familynight:"bg-[#fadbd8]",
+  journal:    "bg-[#d7bde2]",
+  satEmpty:   "bg-[#aed6f1]",
+  satPlanning:"bg-[#d2b4de]",
+  satWork:    "bg-[#abebc6]",
+  satFinish:  "bg-[#d5f5e3]",
+  satFamily:  "bg-[#fadbd8]",
+} as const;
+
+type Cell = { text: string; color: string };
+
+// Each row: [time, mon, tue, wed, thu, fri, sat, sun]
+const ROWS: [string, Cell, Cell, Cell, Cell, Cell, Cell, Cell][] = [
+  ["6:30 am",
+    { text: "Wake, Bathroom",     color: C.morning },
+    { text: "Wake, Bathroom",     color: C.morning },
+    { text: "Wake, Bathroom",     color: C.morning },
+    { text: "Wake, Bathroom",     color: C.morning },
+    { text: "Wake, Bathroom",     color: C.morning },
+    { text: "",                   color: C.satEmpty },
+    { text: "Wake, Bathroom",     color: C.morning },
+  ],
+  ["7:00 am",
+    { text: "Movement & Spa",     color: C.morning },
+    { text: "Movement & Spa",     color: C.morning },
+    { text: "Movement & Spa",     color: C.morning },
+    { text: "Movement & Spa",     color: C.morning },
+    { text: "Movement & Spa",     color: C.morning },
+    { text: "",                   color: C.satEmpty },
+    { text: "Movement & Spa",     color: C.morning },
+  ],
+  ["7:30 am",
+    { text: "Shower & Dress",     color: C.morning },
+    { text: "Shower & Dress",     color: C.morning },
+    { text: "Shower & Dress",     color: C.morning },
+    { text: "Shower & Dress",     color: C.morning },
+    { text: "Shower & Dress",     color: C.morning },
+    { text: "",                   color: C.satEmpty },
+    { text: "Shower & Dress",     color: C.morning },
+  ],
+  ["8:00 am",
+    { text: "Planning (EA)",      color: C.planning },
+    { text: "Planning (EA)",      color: C.planning },
+    { text: "Planning (EA)",      color: C.planning },
+    { text: "Planning (EA)",      color: C.planning },
+    { text: "Planning (EA)",      color: C.planning },
+    { text: "",                   color: C.satPlanning },
+    { text: "Journaling (Me)",    color: C.journal },
+  ],
+  ["8:30 am",
+    { text: "Planning (EA)",      color: C.planning },
+    { text: "Investment",         color: C.invest },
+    { text: "Investment",         color: C.invest },
+    { text: "Investment",         color: C.invest },
+    { text: "Investment",         color: C.invest },
+    { text: "",                   color: C.satEmpty },
+    { text: "Investment",         color: C.invest },
+  ],
+  ["9:00 am",
+    { text: "Planning (EA)",      color: C.planning },
+    { text: "Investment",         color: C.invest },
+    { text: "Investment",         color: C.invest },
+    { text: "Investment",         color: C.invest },
+    { text: "Investment",         color: C.invest },
+    { text: "",                   color: C.satEmpty },
+    { text: "Investment",         color: C.invest },
+  ],
+  ["9:30 am",
+    { text: "Leadership Team",    color: C.leadership },
+    { text: "3",                  color: C.work },
+    { text: "6",                  color: C.work },
+    { text: "10",                 color: C.work },
+    { text: "14",                 color: C.work },
+    { text: "",                   color: C.satWork },
+    { text: "Meditate",           color: C.meditate },
+  ],
+  ["10:00 am",
+    { text: "Leadership Team",    color: C.leadership },
+    { text: "3",                  color: C.work },
+    { text: "6",                  color: C.work },
+    { text: "10",                 color: C.work },
+    { text: "14",                 color: C.work },
+    { text: "",                   color: C.satWork },
+    { text: "Meditate",           color: C.meditate },
+  ],
+  ["10:30 am",
+    { text: "Leadership Team",    color: C.leadership },
+    { text: "3",                  color: C.work },
+    { text: "6",                  color: C.work },
+    { text: "10",                 color: C.work },
+    { text: "14",                 color: C.work },
+    { text: "",                   color: C.satWork },
+    { text: "17",                 color: C.work },
+  ],
+  ["11:00 am",
+    { text: "Leadership Team",    color: C.leadership },
+    { text: "4",                  color: C.work },
+    { text: "7",                  color: C.work },
+    { text: "11",                 color: C.work },
+    { text: "15",                 color: C.work },
+    { text: "",                   color: C.satWork },
+    { text: "17",                 color: C.work },
+  ],
+  ["11:30 am",
+    { text: "Leadership Lunch",   color: C.leadership },
+    { text: "4",                  color: C.work },
+    { text: "7",                  color: C.work },
+    { text: "11",                 color: C.work },
+    { text: "15",                 color: C.work },
+    { text: "",                   color: C.satWork },
+    { text: "17",                 color: C.work },
+  ],
+  ["12:00 pm",
+    { text: "Leadership Lunch",   color: C.leadership },
+    { text: "4",                  color: C.work },
+    { text: "7",                  color: C.work },
+    { text: "11",                 color: C.work },
+    { text: "15",                 color: C.work },
+    { text: "",                   color: C.satWork },
+    { text: "(Walk / Drive)",     color: C.walkdrive },
+  ],
+  ["12:30 pm",
+    { text: "(Walk / Drive)",     color: C.walkdrive },
+    { text: "(Walk / Drive)",     color: C.walkdrive },
+    { text: "(Walk / Drive)",     color: C.walkdrive },
+    { text: "(Walk / Drive)",     color: C.walkdrive },
+    { text: "(Walk / Drive)",     color: C.walkdrive },
+    { text: "",                   color: C.satEmpty },
+    { text: "Cantonese Brunch",   color: C.brunch },
+  ],
+  ["1:00 pm",
+    { text: "(Virtual) Team",     color: C.meeting },
+    { text: "Time for Team",      color: C.meeting },
+    { text: "Preferred Mtg",      color: C.meeting },
+    { text: "Preferred Mtg",      color: C.meeting },
+    { text: "1:1 Team Time",      color: C.meeting },
+    { text: "",                   color: C.satPlanning },
+    { text: "Cantonese Brunch",   color: C.brunch },
+  ],
+  ["1:30 pm",
+    { text: "(Virtual) Team",     color: C.meeting },
+    { text: "Time for Team",      color: C.meeting },
+    { text: "Preferred Mtg",      color: C.meeting },
+    { text: "Preferred Mtg",      color: C.meeting },
+    { text: "1:1 Team Time",      color: C.meeting },
+    { text: "",                   color: C.satPlanning },
+    { text: "Cantonese Brunch",   color: C.brunch },
+  ],
+  ["2:00 pm",
+    { text: "1 (Finance)",        color: C.finance },
+    { text: "Preferred Mtg",      color: C.meeting },
+    { text: "8",                  color: C.work },
+    { text: "12",                 color: C.work },
+    { text: "Preferred Mtg",      color: C.meeting },
+    { text: "",                   color: C.satWork },
+    { text: "Self-Care Errands",  color: C.selfcare },
+  ],
+  ["2:30 pm",
+    { text: "1 (Finance)",        color: C.finance },
+    { text: "Preferred Mtg",      color: C.meeting },
+    { text: "8",                  color: C.work },
+    { text: "12",                 color: C.work },
+    { text: "Preferred Mtg",      color: C.meeting },
+    { text: "",                   color: C.satWork },
+    { text: "Self-Care Errands",  color: C.selfcare },
+  ],
+  ["3:00 pm",
+    { text: "1 (Finance)",        color: C.finance },
+    { text: "Preferred Mtg",      color: C.meeting },
+    { text: "8",                  color: C.work },
+    { text: "12",                 color: C.work },
+    { text: "Preferred Mtg",      color: C.meeting },
+    { text: "",                   color: C.satWork },
+    { text: "(Walk / Drive)",     color: C.walkdrive },
+  ],
+  ["3:30 pm",
+    { text: "2",                  color: C.work },
+    { text: "5 (Review)",         color: C.review },
+    { text: "9",                  color: C.work },
+    { text: "13",                 color: C.work },
+    { text: "16 (Review)",        color: C.review },
+    { text: "",                   color: C.satWork },
+    { text: "18",                 color: C.work },
+  ],
+  ["4:00 pm",
+    { text: "2",                  color: C.work },
+    { text: "5 (Review)",         color: C.review },
+    { text: "9",                  color: C.work },
+    { text: "13",                 color: C.work },
+    { text: "16 (Review)",        color: C.review },
+    { text: "",                   color: C.satWork },
+    { text: "18",                 color: C.work },
+  ],
+  ["4:30 pm",
+    { text: "2",                  color: C.work },
+    { text: "5 (Review)",         color: C.review },
+    { text: "9",                  color: C.work },
+    { text: "13",                 color: C.work },
+    { text: "16 (Review)",        color: C.review },
+    { text: "",                   color: C.satWork },
+    { text: "18",                 color: C.work },
+  ],
+  ["5:00 pm",
+    { text: "Finish / Flex",      color: C.finish },
+    { text: "Finish / Flex",      color: C.finish },
+    { text: "Finish / Flex",      color: C.finish },
+    { text: "Finish / Flex",      color: C.finish },
+    { text: "Finish / Flex",      color: C.finish },
+    { text: "",                   color: C.satFinish },
+    { text: "Finish / Flex",      color: C.finish },
+  ],
+  ["5:30 pm",
+    { text: "Finish / Flex",      color: C.finish },
+    { text: "Finish / Flex",      color: C.finish },
+    { text: "Finish / Flex",      color: C.finish },
+    { text: "Finish / Flex",      color: C.finish },
+    { text: "Finish / Flex",      color: C.finish },
+    { text: "",                   color: C.satFinish },
+    { text: "Finish / Flex",      color: C.finish },
+  ],
+  ["6:00 pm",
+    { text: "Movement & Spa",     color: C.evening },
+    { text: "Movement & Spa",     color: C.evening },
+    { text: "Movement & Spa",     color: C.evening },
+    { text: "Movement & Spa",     color: C.evening },
+    { text: "Movement & Spa",     color: C.evening },
+    { text: "",                   color: C.satEmpty },
+    { text: "Movement & Spa",     color: C.evening },
+  ],
+  ["6:30 pm",
+    { text: "Movement & Spa",     color: C.evening },
+    { text: "Movement & Spa",     color: C.evening },
+    { text: "Movement & Spa",     color: C.evening },
+    { text: "Movement & Spa",     color: C.evening },
+    { text: "Movement & Spa",     color: C.evening },
+    { text: "",                   color: C.satEmpty },
+    { text: "Movement & Spa",     color: C.evening },
+  ],
+  ["7:00 pm",
+    { text: "Personal",           color: C.personal },
+    { text: "Personal",           color: C.personal },
+    { text: "Family Dinner",      color: C.family },
+    { text: "Personal",           color: C.personal },
+    { text: "Personal",           color: C.personal },
+    { text: "",                   color: C.satFamily },
+    { text: "Family Night",       color: C.familynight },
+  ],
+  ["7:30 pm",
+    { text: "Personal",           color: C.personal },
+    { text: "Personal",           color: C.personal },
+    { text: "Family Dinner",      color: C.family },
+    { text: "Personal",           color: C.personal },
+    { text: "Personal",           color: C.personal },
+    { text: "",                   color: C.satFamily },
+    { text: "Family Night",       color: C.familynight },
+  ],
+  ["8:00 pm",
+    { text: "Personal",           color: C.personal },
+    { text: "Personal",           color: C.personal },
+    { text: "Family Dinner",      color: C.family },
+    { text: "Personal",           color: C.personal },
+    { text: "Personal",           color: C.personal },
+    { text: "",                   color: C.satFamily },
+    { text: "Family Night",       color: C.familynight },
+  ],
+  ["8:30 pm",
+    { text: "Personal",           color: C.personal },
+    { text: "Personal",           color: C.personal },
+    { text: "Family Dinner",      color: C.family },
+    { text: "Personal",           color: C.personal },
+    { text: "Personal",           color: C.personal },
+    { text: "",                   color: C.satFamily },
+    { text: "Family Night",       color: C.familynight },
+  ],
+  ["9:00 pm",
+    { text: "Personal",           color: C.personal },
+    { text: "Personal",           color: C.personal },
+    { text: "Family Dinner",      color: C.family },
+    { text: "Personal",           color: C.personal },
+    { text: "Personal",           color: C.personal },
+    { text: "",                   color: C.satFamily },
+    { text: "Family Night",       color: C.familynight },
+  ],
+  ["9:30 pm",
+    { text: "Spa & Shower",       color: C.night },
+    { text: "Spa & Shower",       color: C.night },
+    { text: "Spa & Shower",       color: C.night },
+    { text: "Spa & Shower",       color: C.night },
+    { text: "Spa & Shower",       color: C.night },
+    { text: "",                   color: C.satEmpty },
+    { text: "Spa & Shower",       color: C.night },
+  ],
+  ["10:00 pm",
+    { text: "Lights Out",         color: C.night },
+    { text: "Lights Out",         color: C.night },
+    { text: "Lights Out",         color: C.night },
+    { text: "Lights Out",         color: C.night },
+    { text: "Lights Out",         color: C.night },
+    { text: "",                   color: C.satEmpty },
+    { text: "Lights Out",         color: C.night },
+  ],
+];
+
+export function PerfWeekCalendar() {
+  return (
+    <div className="bg-card rounded-sm border border-border overflow-hidden">
+      <div className="px-5 py-3 border-b border-border">
+        <h3 className="text-xs font-black text-foreground uppercase tracking-[0.15em]">
+          Perf Week V25
+        </h3>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-[12px]">
+          <thead>
+            <tr>
+              <th className="border border-border/50 bg-muted/50 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground italic text-right whitespace-nowrap">
+                Perf Week
+              </th>
+              {DAYS.map((day) => (
+                <th
+                  key={day}
+                  className="border border-border/50 bg-muted/50 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground italic text-center"
+                >
+                  {day}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {/* Theme row */}
+            <tr>
+              <td className="border border-border/50 bg-muted/30 px-3 py-1.5 text-right font-semibold italic text-foreground/80">
+                V25
+              </td>
+              {THEMES.map((theme, i) => (
+                <td
+                  key={i}
+                  className="border border-border/50 bg-muted/30 px-3 py-1.5 text-center font-semibold italic text-foreground/80"
+                >
+                  {theme}
+                </td>
+              ))}
+            </tr>
+
+            {/* Time rows */}
+            {ROWS.map(([time, ...cells]) => (
+              <tr key={time}>
+                <td className="border border-border/50 bg-muted/20 px-1.5 py-0.5 text-right font-semibold text-foreground/70 whitespace-nowrap text-[11px]">
+                  {time}
+                </td>
+                {cells.map((cell, i) => (
+                  <td
+                    key={i}
+                    className={`border border-border/30 px-2 py-1 text-center text-black font-semibold whitespace-nowrap ${cell.color}`}
+                  >
+                    {cell.text}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

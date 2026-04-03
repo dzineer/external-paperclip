@@ -663,7 +663,7 @@ export function AgentDetail() {
                   ? "documents"
                   : activeView === "brain"
                     ? "brain"
-                    : activeView === "calendar" && (agent?.name?.toLowerCase().includes("marie") || agent?.name?.toLowerCase().includes("amy"))
+                    : activeView === "calendar" && (agent?.name?.toLowerCase() === "marie" || agent?.name?.toLowerCase() === "amy")
                       ? "calendar"
                       : activeView === "desk" && agent?.role === "ceo"
                         ? "desk"
@@ -932,7 +932,7 @@ export function AgentDetail() {
               { value: "budget", label: "Budget" },
               { value: "documents", label: "Documents" },
               { value: "brain", label: "Brain" },
-              ...(agent?.name?.toLowerCase().includes("marie") || agent?.name?.toLowerCase().includes("amy")
+              ...(agent?.name?.toLowerCase() === "marie" || agent?.name?.toLowerCase() === "amy"
                 ? [{ value: "calendar", label: "Calendar" }]
                 : []),
               ...(agent?.role === "ceo"

@@ -1,0 +1,30 @@
+{
+  "extraKnownMarketplaces": {
+    "claude-dashboard": {
+      "source": {
+        "source": "github",
+        "repo": "uppinote20/claude-dashboard"
+      }
+    }
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "node /paperclip/.claude/plugins/cache/claude-dashboard/claude-dashboard/1.21.0/dist/index.js"
+  },
+  "mcpServers": {
+    "graphiti": {
+      "command": "node",
+      "args": ["/opt/graphiti-mcp/server.js"],
+      "env": {
+        "GRAPHITI_URL": "http://graphiti:8000"
+      }
+    },
+    "doctree": {
+      "command": "node",
+      "args": ["/opt/doctree-mcp/server.js"],
+      "env": {
+        "PAPERCLIP_API_URL": "http://localhost:3100"
+      }
+    }
+  }
+}

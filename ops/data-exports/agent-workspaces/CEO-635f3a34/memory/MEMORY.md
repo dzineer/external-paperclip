@@ -1,0 +1,1 @@
+- [Company Mission and Structure](project_company_mission.md) — VIT company, team roster, Alpha School focus

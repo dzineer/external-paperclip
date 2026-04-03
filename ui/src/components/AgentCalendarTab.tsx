@@ -55,6 +55,26 @@ function eventColor(event: CalendarEvent, isCurrentDay: boolean): string {
   return "bg-card border border-border";
 }
 
+// Google Calendar color IDs → Tailwind classes
+const GCAL_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  "1":  { bg: "bg-violet-100 dark:bg-violet-900/40",   text: "text-violet-900 dark:text-violet-100",   border: "border-violet-300 dark:border-violet-700" },   // Lavender
+  "2":  { bg: "bg-emerald-100 dark:bg-emerald-900/40", text: "text-emerald-900 dark:text-emerald-100", border: "border-emerald-300 dark:border-emerald-700" }, // Sage
+  "3":  { bg: "bg-purple-100 dark:bg-purple-900/40",   text: "text-purple-900 dark:text-purple-100",   border: "border-purple-300 dark:border-purple-700" },   // Grape
+  "4":  { bg: "bg-pink-100 dark:bg-pink-900/40",       text: "text-pink-900 dark:text-pink-100",       border: "border-pink-300 dark:border-pink-700" },       // Flamingo
+  "5":  { bg: "bg-yellow-100 dark:bg-yellow-900/40",   text: "text-yellow-900 dark:text-yellow-100",   border: "border-yellow-300 dark:border-yellow-700" },   // Banana
+  "6":  { bg: "bg-orange-100 dark:bg-orange-900/40",   text: "text-orange-900 dark:text-orange-100",   border: "border-orange-300 dark:border-orange-700" },   // Tangerine
+  "7":  { bg: "bg-cyan-100 dark:bg-cyan-900/40",       text: "text-cyan-900 dark:text-cyan-100",       border: "border-cyan-300 dark:border-cyan-700" },       // Peacock
+  "8":  { bg: "bg-gray-200 dark:bg-gray-800/40",       text: "text-gray-900 dark:text-gray-100",       border: "border-gray-400 dark:border-gray-600" },       // Graphite
+  "9":  { bg: "bg-blue-100 dark:bg-blue-900/40",       text: "text-blue-900 dark:text-blue-100",       border: "border-blue-300 dark:border-blue-700" },       // Blueberry
+  "10": { bg: "bg-green-100 dark:bg-green-900/40",     text: "text-green-900 dark:text-green-100",     border: "border-green-300 dark:border-green-700" },     // Basil
+  "11": { bg: "bg-red-100 dark:bg-red-900/40",         text: "text-red-900 dark:text-red-100",         border: "border-red-300 dark:border-red-700" },         // Tomato
+};
+
+function getEventColors(colorId: string | null) {
+  if (colorId && GCAL_COLORS[colorId]) return GCAL_COLORS[colorId];
+  return null;
+}
+
 export function AgentCalendarTab({
   agentName,
   companyId,
@@ -157,88 +177,10 @@ export function AgentCalendarTab({
 
       {/* Bento Grid */}
       <div className="grid grid-cols-12 gap-5">
-        {/* Left Column: Briefing + Syncs + Efficiency */}
-        <div className="col-span-12 lg:col-span-3 space-y-5">
-          {/* Upcoming Briefing */}
-          <div className="bg-card rounded-sm p-5 border border-border">
-            <h3 className="text-[10px] font-black text-primary uppercase tracking-[0.15em] mb-4">
-              Upcoming Briefing
-            </h3>
-            {upcoming ? (
-              <div className="space-y-3">
-                <div>
-                  <p className="text-base font-bold text-foreground leading-tight">{upcoming.summary}</p>
-                  {upcoming.location && (
-                    <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider font-bold">
-                      {upcoming.location}
-                    </p>
-                  )}
-                </div>
-                <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground bg-muted p-2 rounded-sm">
-                  <span>{formatTime(upcoming.start)}</span>
-                  <span className="text-primary">
-                    {upcoming.start
-                      ? `In ${Math.max(0, Math.round((new Date(upcoming.start).getTime() - Date.now()) / 60000))}m`
-                      : ""}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">No upcoming events</p>
-            )}
-          </div>
+        {/* Left Column (Briefing, Today's Schedule, Schedule Density) — hidden */}
 
-          {/* Today's Schedule */}
-          <div className="bg-card rounded-sm p-5 border border-border">
-            <h3 className="text-[10px] font-black text-foreground uppercase tracking-[0.15em] mb-5">
-              Today's Schedule
-            </h3>
-            <div className="space-y-4">
-              {todayEvents.length === 0 && (
-                <p className="text-xs text-muted-foreground">No events today</p>
-              )}
-              {todayEvents.map((event, i) => (
-                <div key={event.id} className="flex gap-3 items-start">
-                  <div className={`w-[2px] h-10 rounded-full ${i === 0 ? "bg-primary/60" : "bg-muted-foreground/20"}`} />
-                  <div>
-                    <p className="text-xs font-bold text-foreground">{event.summary}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {formatTimeRange(event.start, event.end)}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Efficiency */}
-          <div className="bg-muted/30 rounded-sm p-5 border border-border">
-            <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em] mb-3">
-              Schedule Density
-            </h3>
-            <div className="flex items-end justify-between mb-2">
-              <span className="text-2xl font-light text-foreground">
-                {totalEvents > 0 ? Math.min(100, Math.round((totalEvents / 35) * 100)) : 0}
-                <span className="text-sm font-bold text-primary">%</span>
-              </span>
-              <span className="text-[10px] font-bold text-primary">
-                {totalEvents > 20 ? "BUSY" : totalEvents > 10 ? "MODERATE" : "LIGHT"}
-              </span>
-            </div>
-            <div className="w-full bg-muted h-[2px]">
-              <div
-                className="bg-primary h-full"
-                style={{ width: `${Math.min(100, Math.round((totalEvents / 35) * 100))}%` }}
-              />
-            </div>
-            <p className="text-[10px] text-muted-foreground mt-3 leading-relaxed">
-              {totalEvents} events this week for {agentName}.
-            </p>
-          </div>
-        </div>
-
-        {/* Right Column: Main Calendar */}
-        <div className="col-span-12 lg:col-span-9 space-y-5">
+        {/* Main Calendar — full width */}
+        <div className="col-span-12 space-y-5">
           <div className="bg-card rounded-sm border border-border overflow-hidden">
             {/* Week navigation */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-border">
@@ -294,6 +236,7 @@ export function AgentCalendarTab({
                   >
                     {dayEvents.map((event) => {
                       const isCurrent = today;
+                      const colors = getEventColors(event.colorId);
                       return (
                         <a
                           key={event.id}
@@ -301,24 +244,26 @@ export function AgentCalendarTab({
                           target="_blank"
                           rel="noopener noreferrer"
                           className={`block p-2.5 rounded-sm transition-all group ${
-                            isCurrent
+                            isCurrent && !colors
                               ? "bg-primary text-primary-foreground shadow-md"
-                              : "bg-muted/50 border border-border hover:border-primary/30"
+                              : colors
+                                ? `${colors.bg} border ${colors.border} hover:shadow-sm`
+                                : "bg-muted/50 border border-border hover:border-primary/30"
                           }`}
                         >
                           <p className={`text-[11px] font-semibold leading-tight truncate ${
-                            isCurrent ? "text-primary-foreground" : "text-foreground"
+                            isCurrent && !colors ? "text-primary-foreground" : colors ? colors.text : "text-foreground"
                           }`}>
                             {event.summary}
                           </p>
                           <p className={`text-[9px] font-bold uppercase mt-1 ${
-                            isCurrent ? "text-primary-foreground/80" : "text-muted-foreground"
+                            isCurrent && !colors ? "text-primary-foreground/80" : colors ? `${colors.text} opacity-70` : "text-muted-foreground"
                           }`}>
                             {formatTimeRange(event.start, event.end)}
                           </p>
                           {event.attendees.length > 0 && (
                             <p className={`text-[8px] mt-1 truncate ${
-                              isCurrent ? "text-primary-foreground/60" : "text-muted-foreground/60"
+                              isCurrent && !colors ? "text-primary-foreground/60" : colors ? `${colors.text} opacity-50` : "text-muted-foreground/60"
                             }`}>
                               {event.attendees.length} attendee{event.attendees.length > 1 ? "s" : ""}
                             </p>

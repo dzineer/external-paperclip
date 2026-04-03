@@ -5,8 +5,8 @@
 
 set -e
 
-# Resolve to repo root (one level up from ops/)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve to repo root — follow symlinks, then go up from ops/
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 COMPOSE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Load environment from .env if it exists

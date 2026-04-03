@@ -1,0 +1,56 @@
+## Dev override — mounts source, runs Vite HMR + tsx watch
+## Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up server-dev
+##
+## UI:     http://localhost:5173  (Vite HMR — instant refresh)
+## API:    http://localhost:3100  (tsx watch — auto-restart on backend changes)
+
+services:
+  server-dev:
+    build: .
+    ports:
+      - "3100:5173"
+      - "3101:3101"
+    environment:
+      DATABASE_URL: postgres://paperclip:paperclip@db:5432/paperclip
+      PORT: "3101"
+      SERVE_UI: "false"
+      NODE_ENV: "development"
+      PAPERCLIP_DEPLOYMENT_MODE: "authenticated"
+      PAPERCLIP_DEPLOYMENT_EXPOSURE: "private"
+      PAPERCLIP_PUBLIC_URL: "${PAPERCLIP_PUBLIC_URL:-http://localhost:5173}"
+      BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET must be set}"
+      GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE: "/paperclip/.config/gws/tokens.json"
+      GRAPHITI_URL: "http://graphiti:8000"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      PAPERCLIP_MIGRATION_PROMPT: "never"
+      PAPERCLIP_MIGRATION_AUTO_APPLY: "true"
+      VITE_API_TARGET: "http://localhost:3101"
+    volumes:
+      # Mount source code only (not node_modules) — changes reflect instantly
+      - ./server/src:/app/server/src
+      - ./ui/src:/app/ui/src
+      - ./ui/vite.config.ts:/app/ui/vite.config.ts
+      - ./packages/shared/src:/app/packages/shared/src
+      - ./packages/db/src:/app/packages/db/src
+      - ./skills:/app/skills
+      - ./mcp:/app/mcp
+      # Runtime data
+      - paperclip-data:/paperclip
+      - ./ops/claude-config:/paperclip/.claude
+      - /home/dev/claude-queue/claude-slow:/usr/local/bin/claude-slow:ro
+      - /home/dev/claude-queue/worker.py:/opt/claude-queue/worker.py:ro
+      - /home/dev/gws-config:/paperclip/.config/gws
+      - /home/dev/graphiti-mcp:/opt/graphiti-mcp:ro
+      - ./mcp/doctree:/opt/doctree-mcp:ro
+      - ./mcp/agent-memory:/opt/agent-memory-mcp:ro
+      - ./mcp/gws:/opt/gws-mcp:ro
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        # Start backend on port 3101
+        cd /app && ./server/node_modules/.bin/tsx --watch server/src/index.ts &
+        # Start Vite on port 5173 (mapped to host 3100), proxy /api to backend
+        cd /app/ui && ./node_modules/.bin/vite --host 0.0.0.0 --port 5173
+    depends_on:
+      db:
+        condition: service_healthy
